@@ -1,5 +1,5 @@
 FROM ubuntu:trusty
-MAINTAINER CenturyLinkLabs <ctl-labs-futuretech@centurylink.com>
+MAINTAINER Tindaro Tornabene <tindaro.tornabene@gmail.com>
 
 # Install packages
 RUN apt-get update && \
