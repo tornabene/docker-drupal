@@ -25,12 +25,38 @@ RUN mkdir -p /app && rm -fr /var/www/html && ln -s /app /var/www/html
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade && \
   DEBIAN_FRONTEND=noninteractive apt-get -y install supervisor pwgen && \
   apt-get -y install mysql-client && \
-  apt-get -y install postgresql-client
+  apt-get -y install postgresql-client &&\
+  apt-get install -y curl git
+  
+  
+# install package building helpers
+RUN apt-get -y --force-yes install dpkg-dev debhelper
+
+# install dependancies
+RUN apt-get -y build-dep pure-ftpd
+
+# build from source
+RUN mkdir /tmp/pure-ftpd/ && \
+	cd /tmp/pure-ftpd/ && \
+	apt-get source pure-ftpd && \
+	cd pure-ftpd-* && \
+	sed -i '/^optflags=/ s/$/ --without-capabilities/g' ./debian/rules && \
+	dpkg-buildpackage -b -uc
+
+# install the new deb files
+RUN dpkg -i /tmp/pure-ftpd/pure-ftpd-common*.deb
+RUN apt-get -y install openbsd-inetd
+RUN dpkg -i /tmp/pure-ftpd/pure-ftpd_*.deb
+
+# Prevent pure-ftpd upgrading
+RUN apt-mark hold pure-ftpd pure-ftpd-common
+
+# setup ftpgroup and ftpuser
+RUN groupadd ftpgroup
+RUN useradd -g ftpgroup -d /dev/null -s /etc ftpuser
 
 
-RUN apt-get install -y curl git wzdftpd
-
-# Download v7.28 of Drupal into /app
+# Download v7.32 of Drupal into /app
 RUN rm -fr /app && mkdir /app && cd /app && \
   curl -O http://ftp.drupal.org/files/projects/drupal-7.32.tar.gz && \
   tar -xzvf drupal-7.32.tar.gz && \
