@@ -26,35 +26,10 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade && \
   DEBIAN_FRONTEND=noninteractive apt-get -y install supervisor pwgen && \
   apt-get -y install mysql-client && \
   apt-get -y install postgresql-client &&\
-  apt-get install -y curl git
+  apt-get install -y curl git drush
   
   
-# install package building helpers
-RUN apt-get -y --force-yes install dpkg-dev debhelper
-
-# install dependancies
-RUN apt-get -y build-dep pure-ftpd
-
-# build from source
-RUN mkdir /tmp/pure-ftpd/ && \
-	cd /tmp/pure-ftpd/ && \
-	apt-get source pure-ftpd && \
-	cd pure-ftpd-* && \
-	sed -i '/^optflags=/ s/$/ --without-capabilities/g' ./debian/rules && \
-	dpkg-buildpackage -b -uc
-
-# install the new deb files
-RUN dpkg -i /tmp/pure-ftpd/pure-ftpd-common*.deb
-RUN apt-get -y install openbsd-inetd
-RUN dpkg -i /tmp/pure-ftpd/pure-ftpd_*.deb
-
-# Prevent pure-ftpd upgrading
-RUN apt-mark hold pure-ftpd pure-ftpd-common
-
-# setup ftpgroup and ftpuser
-RUN groupadd ftpgroup
-RUN useradd -g ftpgroup -d /dev/null -s /etc ftpuser
-
+RUN apt-get -y install openssh-server && mkdir /var/run/sshd
 
 # Download v7.32 of Drupal into /app
 RUN rm -fr /app && mkdir /app && cd /app && \
@@ -70,8 +45,13 @@ RUN cp app/sites/default/default.settings.php app/sites/default/settings.php && 
     chmod a+w app/sites/default/settings.php && \
     chmod a+w app/sites/default
 
+
+RUN echo 'root:ntipa' |chpasswd
+RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
 EXPOSE 80
-EXPOSE 20 21
+EXPOSE 22
 
 CMD ["/run.sh"]
 
